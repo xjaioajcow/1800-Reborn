@@ -46,3 +46,26 @@ provides it to React components via `GameSdkProvider`. As more
 functionality is added to the SDK and hooks, the front‑end pages can
 consume them via the exported hooks (e.g. `useUserShips`, `useVoyage`,
 `usePiratePool`, `useFomoStatus`).
+
+## 🛳 Ship Loop v0.1
+
+This release introduces the first playable loop for **buy → voyage → upgrade**
+as defined in the project whitepaper. The SDK now exposes high‑level
+wrappers around the `CoreGameV2` contract (`buyShip`, `voyage`,
+`upgradeShip` and `getShipPrice`) and corresponding React hooks
+(`useBuyShip`, `useVoyageMutation`, `useUpgradeShip`). On the front‑end,
+the `/ships` page lists your ships via `useUserShips`, provides a
+“Buy Ship” button that opens a transaction modal with dynamic price
+information, and enables selecting two ships of the same level to
+trigger an upgrade. The `/voyage` page allows you to choose a ship,
+enter a DBL value and send it on a voyage, displaying the raw result.
+
+Internally, TanStack Query is used to cache queries and invalidate
+`['userShips']` whenever a mutation succeeds, ensuring the UI stays
+synchronized with on‑chain state. A generic `<TxModal>` component
+displays the transaction lifecycle (signature → confirmation →
+success/error) and can be reused across the application. Colour
+constants live in `apps/web/src/styles/colors.ts` to centralize the
+palette. Unit tests cover buy/upgrade/voyage flows with success and
+error scenarios, maintaining coverage above 80 %. ESLint passes with
+zero errors and fewer than 50 warnings.

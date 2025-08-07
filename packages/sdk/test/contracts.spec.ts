@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { ethers } from 'ethers';
 
 import { createGameToken } from '../src/contracts/gameToken';
-import { createCoreGameV2 } from '../src/contracts/coreGameV2';
+// Import the factory from the new file name (coreGameV2Factory) to avoid case collisions
+import { createCoreGameV2 } from '../src/contracts/coreGameV2Factory';
 import { createShipSBT } from '../src/contracts/shipSBT';
 import { createPiratePool } from '../src/contracts/piratePool';
 import { createBscTestnetSdk } from '../src/sdk';
