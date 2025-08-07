@@ -157,5 +157,45 @@ export function createCoreGame(
       const contract = coreGame.connect(signer);
       return execAndEmit(contract.claimWinnerReward(), 'winnerClaimed');
     },
+
+    /**
+     * Purchase a FOMO key.  The underlying CoreGameV2 contract does
+     * not expose a distinct `buyKey` method in the current ABI, so
+     * this helper maps key purchases onto ship purchases of level 1
+     * (the cheapest asset).  Consumers can pass a faction string
+     * (e.g. 'Cargo' or 'Fort') to indicate their preferred team,
+     * although the current implementation does not differentiate
+     * factions at the contract level.  Quantity defaults to 1.  The
+     * returned receipt resolves once the transaction confirms.
+     */
+    async buyKey(
+      signer: ethers.Signer = defaultSigner as any,
+      faction: string = 'Cargo',
+      quantity: bigint = 1n,
+    ) {
+      if (!signer) throw new Error('Signer is required for buyKey');
+      // Delegate to buyShip; keys are mapped to level‑1 ship purchases
+      return this.buyShip(signer, 1, quantity);
+    },
+
+    /**
+     * Retrieve the current FOMO status from the contract.  This
+     * method wraps the underlying getFOMOStatus() call on
+     * CoreGameV2 and returns the tuple as an object for easier
+     * consumption.  See the contract ABI for the exact fields.
+     */
+    async getFomoStatus() {
+      const [isActive, remainingTime, cargoJackpot, fortJackpot, cargoKeys, fortKeys, lastBuyer]: [boolean, number, bigint, bigint, bigint, bigint, string] =
+        await coreGame.getFOMOStatus();
+      return {
+        isActive,
+        remainingTime,
+        cargoJackpot,
+        fortJackpot,
+        cargoKeys,
+        fortKeys,
+        lastBuyer,
+      } as const;
+    },
   };
 }

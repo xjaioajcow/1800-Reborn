@@ -52,7 +52,7 @@ export default function ShipsPage() {
   const handleBuy = async () => {
     // For now purchase one level‑1 ship.  Extend this to accept quantity
     // from user input when implementing the full modal UI.
-    await buyMutation.mutateAsync({ signer: dummySigner, level: 1, qty: 1n });
+    await buyMutation.mutateAsync({ signer: dummySigner, level: 1, qty: BigInt(1) });
     setBuyModalOpen(false);
   };
 

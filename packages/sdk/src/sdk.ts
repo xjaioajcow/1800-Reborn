@@ -85,5 +85,17 @@ export function createBscTestnetSdk(
      * must be supplied. See CoreGameV2.getFomoStatus for details.
      */
     getFomoStatus: (readProvider: ethers.Provider) => CoreGameV2.getFomoStatus(readProvider),
+
+    /**
+     * Purchase a FOMO key via the high‑level coreGame wrapper.  See
+     * coreGame.buyKey for details.  The `faction` argument is
+     * currently unused but reserved for future versions of the
+     * contract.  Quantity defaults to 1 key.
+     */
+    buyKey: (
+      userSigner: ethers.Signer,
+      faction: string = 'Cargo',
+      qty: bigint = 1n,
+    ) => base.coreGame.buyKey(userSigner, faction, qty),
   };
 }

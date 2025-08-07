@@ -84,12 +84,69 @@ export function useVoyageQuery(params?: any) {
  * For stake/unstake operations, consider using useMutation from
  * @tanstack/react-query. This hook is unchanged from earlier versions.
  */
-export function usePiratePool() {
+/**
+ * Query and mutation hooks for the PiratePool.  Provides a typed
+ * interface to retrieve staking information and perform stake/
+ * unstake/claim operations.  The pool info is refreshed every 20
+ * seconds to keep UI state in sync.  Pass the user's wallet
+ * address (owner) as the first argument.  If no owner is provided
+ * the hook will return undefined and no network calls will be
+ * attempted.
+ */
+export function usePiratePool(owner?: string) {
   const sdk = useGameSdk();
-  return useQuery({
-    queryKey: ['piratePool'] as QueryKey,
-    queryFn: async () => sdk.piratePool.claimReward(),
+  const queryClient = useQueryClient();
+  // Query staked/pending/APY info
+  const infoQuery = useQuery({
+    queryKey: ['piratePool', owner] as QueryKey,
+    queryFn: async () => {
+      if (!owner) return undefined;
+      return sdk.piratePool.getPiratePoolInfo(owner);
+    },
+    enabled: !!owner,
+    refetchInterval: 20000,
   });
+  // Mutation for staking
+  const stakeMutation = useMutation({
+    mutationFn: async ({ signer, amount }: { signer: ethers.Signer; amount: bigint }) => {
+      return sdk.piratePool.stake(amount).then((tx: any) => tx.wait?.() ?? tx);
+    },
+    onSuccess: () => {
+      if (owner) queryClient.invalidateQueries({ queryKey: ['piratePool', owner] });
+    },
+  });
+  // Mutation for unstaking
+  const unstakeMutation = useMutation({
+    mutationFn: async ({ signer, amount }: { signer: ethers.Signer; amount: bigint }) => {
+      return sdk.piratePool.unstake(amount).then((tx: any) => tx.wait?.() ?? tx);
+    },
+    onSuccess: () => {
+      if (owner) queryClient.invalidateQueries({ queryKey: ['piratePool', owner] });
+    },
+  });
+  // Mutation for claiming rewards
+  const claimMutation = useMutation({
+    mutationFn: async ({ signer }: { signer: ethers.Signer }) => {
+      return sdk.piratePool.claimReward().then((tx: any) => tx.wait?.() ?? tx);
+    },
+    onSuccess: () => {
+      if (owner) queryClient.invalidateQueries({ queryKey: ['piratePool', owner] });
+    },
+  });
+  return {
+    info: infoQuery.data as { staked: bigint; pendingRewards: bigint; apy: number } | undefined,
+    isLoading: infoQuery.isLoading,
+    error: infoQuery.error,
+    stake: stakeMutation.mutateAsync,
+    unstake: unstakeMutation.mutateAsync,
+    claimReward: claimMutation.mutateAsync,
+    // Some versions of TanStack Query do not expose `isLoading` on mutation
+    // results.  Use the `isPending` flag when available to indicate
+    // in‑flight status and fall back to boolean false.
+    isStaking: (stakeMutation as any).isLoading ?? (stakeMutation as any).isPending ?? false,
+    isUnstaking: (unstakeMutation as any).isLoading ?? (unstakeMutation as any).isPending ?? false,
+    isClaiming: (claimMutation as any).isLoading ?? (claimMutation as any).isPending ?? false,
+  };
 }
 
 /**
@@ -201,7 +258,9 @@ export function useTokenAllowance(
     allowance: allowanceQuery.data as bigint | undefined,
     isLoading: allowanceQuery.isLoading,
     approve: approveMutation.mutateAsync,
-    isApproving: approveMutation.isLoading,
+    // Similar to the PiratePool mutations, TanStack's mutation result may not
+    // expose `isLoading`.  Fall back to `isPending` or false.
+    isApproving: (approveMutation as any).isLoading ?? (approveMutation as any).isPending ?? false,
   };
 }
 
@@ -209,10 +268,22 @@ export function useTokenAllowance(
  * Fetch the current FOMO status. Placeholder implementation until the
  * contract interface is finalized.
  */
+/**
+ * Query hook for the FOMO status.  Wraps the high‑level
+ * coreGame.getFomoStatus() function and memoises the result via
+ * TanStack Query.  The query key ensures that callers across the
+ * application share the same cache entry.  Because the underlying
+ * getFOMOStatus call is view‑only, there is no refetch interval
+ * specified; consumers can call refetch() on the returned result if
+ * more frequent updates are required.
+ */
 export function useFomoStatus() {
   const sdk = useGameSdk();
   return useQuery({
     queryKey: ['fomoStatus'] as QueryKey,
-    queryFn: async () => sdk.coreGameV2.getFomoStatus?.(),
+    queryFn: async () => {
+      if (!sdk.coreGame) return undefined;
+      return sdk.coreGame.getFomoStatus();
+    },
   });
 }
