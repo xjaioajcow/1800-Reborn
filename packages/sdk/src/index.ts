@@ -8,3 +8,8 @@ export * from './sdk';
 export * from './hooks';
 // Export common types so that consumers can import ShipInfo etc from the package root
 export * from './types/ship';
+
+// High‑level flows for buy/voyage/upgrade operations.  These helpers
+// orchestrate contract calls and wait for confirmations.  See
+// packages/sdk/src/flows/index.ts for implementation details.
+export * from './flows';

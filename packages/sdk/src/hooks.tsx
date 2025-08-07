@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo } from 'react';
 import { useQuery, QueryKey, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ethers } from 'ethers';
 import { createBscTestnetSdk } from './sdk';
+import { buyShipFlow, voyageFlow, upgradeFlow } from './flows';
 
 // Define the shape of the SDK instance using the return type of our factory
 type GameSdkInstance = ReturnType<typeof createBscTestnetSdk>;
@@ -49,7 +50,17 @@ export function useUserShips(userAddress: string) {
   const sdk = useGameSdk();
   return useQuery({
     queryKey: ['userShips', userAddress] as QueryKey,
-    queryFn: async () => sdk.coreGameV2.getUserShips(userAddress),
+    queryFn: async () => {
+      // Prefer the optimized shipsOfOwner call if available.  Fall
+      // back to the CoreGameV2 getUserShips method for backwards
+      // compatibility.  When ABIs are provided this will return an
+      // array of ShipInfo objects; currently we return whatever the
+      // contract returns.
+      if (sdk.shipSBT && typeof sdk.shipSBT.shipsOfOwnerOptimized === 'function') {
+        return sdk.shipSBT.shipsOfOwnerOptimized(userAddress);
+      }
+      return sdk.coreGameV2.getUserShips(userAddress);
+    },
     enabled: !!userAddress,
   });
 }
@@ -90,13 +101,17 @@ export function useBuyShip() {
   const sdk = useGameSdk();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ signer }: { signer: ethers.Signer }) => {
-      return sdk.buyShip(signer);
+    mutationFn: async ({ signer, level = 1, qty = 1n }: { signer: ethers.Signer; level?: number; qty?: bigint }) => {
+      // Delegate to the high‑level coreGame wrapper which handles
+      // allowances and emits events
+      return sdk.coreGame.buyShip(signer, level, qty);
     },
     onSuccess: () => {
-      // Invalidate the userShips query so lists refresh. Use object
-      // argument per TanStack Query v5 API.
+      // Invalidate queries related to ships and ship price so that dependent
+      // UI refreshes when new ships are minted or price changes.  Note:
+      // use object argument per TanStack Query v5 API.
       queryClient.invalidateQueries({ queryKey: ['userShips'] });
+      queryClient.invalidateQueries({ queryKey: ['shipPrice'] });
     },
   });
 }
@@ -110,16 +125,8 @@ export function useUpgradeShip() {
   const sdk = useGameSdk();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      signer,
-      idA,
-      idB,
-    }: {
-      signer: ethers.Signer;
-      idA: bigint;
-      idB: bigint;
-    }) => {
-      return sdk.upgradeShip(signer, idA, idB);
+    mutationFn: async ({ signer, idA, idB }: { signer: ethers.Signer; idA: bigint; idB: bigint }) => {
+      return sdk.coreGame.upgradeShip(signer, idA, idB);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userShips'] });
@@ -138,21 +145,64 @@ export function useVoyageMutation() {
   const sdk = useGameSdk();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      signer,
-      shipId,
-      dbl,
-    }: {
-      signer: ethers.Signer;
-      shipId: bigint;
-      dbl: bigint;
-    }) => {
-      return sdk.voyage(signer, shipId, dbl);
+    mutationFn: async ({ signer, shipId, dbl }: { signer: ethers.Signer; shipId: bigint; dbl: bigint }) => {
+      return sdk.coreGame.voyage(signer, shipId, dbl);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userShips'] });
+      queryClient.invalidateQueries({ queryKey: ['fomoStatus'] });
     },
   });
+}
+
+/**
+ * Hook to query a token allowance and optionally approve additional
+ * allowance.  Use this in situations where a user needs to grant
+ * permission to spend their tokens (e.g. DBL) before interacting
+ * with a contract.  When called, the hook will read the current
+ * allowance for the given owner/spender pair and expose an `approve`
+ * function that can be used to increase the allowance.  After a
+ * successful approval the allowance query will be invalidated so
+ * consumers see the updated value.
+ *
+ * @param owner Wallet address of the token holder
+ * @param tokenAddress ERC‑20 token contract address (ignored in current impl)
+ * @param spender Address of the contract that will spend the tokens
+ */
+export function useTokenAllowance(
+  owner: string,
+  tokenAddress: string,
+  spender: string,
+) {
+  const sdk = useGameSdk();
+  const queryClient = useQueryClient();
+  const allowanceQuery = useQuery({
+    queryKey: ['allowance', owner, tokenAddress, spender],
+    queryFn: async () => {
+      if (!owner || !spender) return 0n;
+      // Currently we assume the token is GameToken; when multiple tokens
+      // are supported this can be dispatched based on tokenAddress.
+      return sdk.gameToken.allowance(owner, spender);
+    },
+    enabled: !!owner && !!spender,
+  });
+  const approveMutation = useMutation({
+    mutationFn: async (amount: bigint) => {
+      // Approve the spender for the given amount.  This will create a
+      // transaction that must be signed by the user.  The SDK
+      // instance must have been created with a signer.
+      return sdk.gameToken.approve(spender, amount);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allowance', owner, tokenAddress, spender] });
+    },
+  });
+  return {
+    allowance: allowanceQuery.data as bigint | undefined,
+    isLoading: allowanceQuery.isLoading,
+    approve: approveMutation.mutateAsync,
+    isApproving: approveMutation.isLoading,
+  };
 }
 
 /**

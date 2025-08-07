@@ -33,5 +33,11 @@ export function createGameToken(provider: ethers.Provider, signer?: ethers.Signe
     decimals() {
       return contract.decimals();
     },
+    /**
+     * Check how much the owner has allowed the spender to transfer.
+     */
+    allowance(owner: string, spender: string) {
+      return contract.allowance(owner, spender);
+    },
   };
 }

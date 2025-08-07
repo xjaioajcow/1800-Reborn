@@ -23,8 +23,25 @@ const coreGameV2 = new ethers.Contract(
  * to the on‑chain buyShip() method. Additional logic such as
  * price retrieval should be handled outside of this function.
  */
-export async function buyShip(signer: ethers.Signer) {
-  return coreGameV2.connect(signer).buyShip();
+/**
+ * Purchase a new ship.  The caller must specify the desired level
+ * (usually 1 for base ships) and the quantity to mint.  The signer
+ * must provide sufficient payment (BNB and/or DBL as configured on
+ * the contract).  This helper simply forwards the call to the
+ * underlying contract and returns the transaction response.  When
+ * TypeChain types become available, update the parameter types
+ * accordingly.
+ *
+ * @param signer Wallet used to sign the transaction
+ * @param level Level of the ship to purchase (uint8)
+ * @param qty   Number of ships to purchase (uint256)
+ */
+export async function buyShip(
+  signer: ethers.Signer,
+  level: number = 1,
+  qty: bigint = 1n,
+) {
+  return coreGameV2.connect(signer).buyShip(level, qty);
 }
 
 /**
@@ -79,4 +96,19 @@ export async function getShipPrice(provider: ethers.Provider) {
     throw new Error('getShipPrice is not available on CoreGameV2');
   }
   return connected.getShipPrice();
+}
+
+/**
+ * Read the FOMO status from the contract if available.  This method
+ * returns whatever the contract exposes as its FOMO status.  When
+ * ABIs are provided, replace the dynamic call with a typed one.
+ *
+ * @param provider Read‑only provider
+ */
+export async function getFomoStatus(provider: ethers.Provider) {
+  const connected = coreGameV2.connect(provider);
+  if (typeof connected.getFomoStatus !== 'function') {
+    throw new Error('getFomoStatus is not available on CoreGameV2');
+  }
+  return connected.getFomoStatus();
 }

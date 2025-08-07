@@ -25,5 +25,14 @@ export function createShipSBT(provider: ethers.Provider, signer?: ethers.Signer)
     hasPirate(...args: any[]) {
       return contract.hasPirate(...args);
     },
+    /**
+     * Optimized version of shipsOfOwner that returns an array of
+     * bigints. The implementation depends on the on-chain contract
+     * exposing a method named shipsOfOwnerOptimized. When ABIs are
+     * available, replace the dynamic call with a typed one.
+     */
+    shipsOfOwnerOptimized(owner: string): Promise<bigint[]> {
+      return contract.shipsOfOwnerOptimized(owner);
+    },
   };
 }
