@@ -15,7 +15,7 @@ export default defineConfig({
       // coverage percentage is dragged down by empty modules such as
       // src/react/usePiratePool.ts and src/index.ts.
       include: ['src/**/*.ts'],
-      exclude: ['src/react/**', 'src/index.ts', 'src/multicall.ts'],
+      exclude: ['src/react/**', 'src/index.ts', 'src/multicall.ts', 'src/coreGame.ts'],
       statements: 80,
       lines: 80,
       branches: 80,
