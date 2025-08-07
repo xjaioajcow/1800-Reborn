@@ -1,10 +1,39 @@
 {
-  "name": "sdk",
-  "private": true,
+  "name": "@cvf/sdk",
   "version": "0.1.0",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "private": true,
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "ts-node": "ts-node src/index.ts"
+    "build": "tsup",
+    "typegen": "typechain --target=ethers-v6 --out-dir=typechain ../../contracts/**/*.json",
+    "test": "vitest run --coverage"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "dependencies": {
+    "ethers": "^6.15.0",
+    "@tanstack/react-query": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "tsup": "^8.0.0",
+    "vitest": "^1.0.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "ts-node": "^10.9.2",
+    "typechain": "^8.3.2",
+    "@typechain/ethers-v6": "^0.5.1"
   }
 }

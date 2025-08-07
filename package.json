@@ -10,10 +10,12 @@
   "scripts": {
     "start": "webpack serve --mode development --open",
     "build": "webpack --mode production",
-    "typegen": "typechain --target=ethers-v6 --out-dir=packages/sdk/src/types contracts/abis/**/*.json"
+    "typegen": "typechain --target=ethers-v6 --out-dir=packages/sdk/typechain contracts/**/*.json"
   },
   "devDependencies": {
     "@typechain/ethers-v6": "^0.5.1",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
     "ts-node": "^10.9.2",
     "typechain": "^8.3.2",
     "typescript": "^5.9.2"
