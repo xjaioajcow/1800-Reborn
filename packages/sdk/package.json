@@ -1,0 +1,10 @@
+{
+  "name": "sdk",
+  "private": true,
+  "version": "0.1.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "ts-node": "ts-node src/index.ts"
+  }
+}
